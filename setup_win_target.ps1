@@ -151,6 +151,19 @@ try {
   Add-DnsServerResourceRecord -ZoneName $LabDomain -Name "@" -TxtData "windows-dns-secondary" -Type TXT -ErrorAction SilentlyContinue
 } catch {}
 
+# --- Remote Desktop (so nmap sees 3389/tcp open) ---
+Log "enabling Remote Desktop (RDP / 3389)"
+try {
+  Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' `
+    -Name 'fDenyTSConnections' -Value 0 -Force
+  Enable-NetFirewallRule -DisplayGroup 'Remote Desktop' -ErrorAction SilentlyContinue
+  # Also ensure our explicit rule exists (below)
+  Start-Service TermService -ErrorAction SilentlyContinue
+  Set-Service TermService -StartupType Automatic -ErrorAction SilentlyContinue
+} catch {
+  Log "WARN: could not fully enable RDP: $($_.Exception.Message)"
+}
+
 # --- Firewall ---
 Log "opening firewall 53/80/445/3389"
 $rules = @(
