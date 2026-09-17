@@ -1,8 +1,20 @@
-# Example Salt pillar — same IPs on every team pod (isolated 192.168.1.0/24).
-# Apply from the admin Kali (Salt master). Pin player_user per jumpbox if needed.
+# ENUM QUEST — Salt notes for this range
+#
+# Lab files live on the master at:  /srv/salt/F26_enum_lab
+# Prefer the deploy script (salt-cp + cmd.run) over state.apply for first rollout:
+#   sudo bash /srv/salt/F26_enum_lab/deploy_enum_quest.sh 1 2 3
+#
+# Minions per team N:
+#   linux-ocig-kaliN
+#   linux-ocig-ubuntuN
+#   win-ocig-19srvN
+# Jumpbox login user: ocigN
+#
+# Optional grains (if you later use state.apply enum-quest):
+#   role: jumpbox | ubuntu-target | win-target
 
 enum_quest:
-  files_root: /srv/enum_lab
+  files_root: /srv/salt/F26_enum_lab
   lab_domain: vault.lab
   ubuntu_host: vault-web
   win_host: vault-dc
@@ -10,4 +22,3 @@ enum_quest:
   ubuntu_ip: 192.168.1.10
   win_ip: 192.168.1.11
   jumpbox_cidr: 192.168.1.0/24
-  # player_user: ocig30

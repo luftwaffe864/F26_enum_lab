@@ -5,7 +5,7 @@
  #   Jumpbox 192.168.1.7 · Ubuntu 192.168.1.10 · Windows 192.168.1.11
  #}
 {% set role = salt['grains.get']('role', '') %}
-{% set files_root = salt['pillar.get']('enum_quest:files_root', '/srv/enum_lab') %}
+{% set files_root = salt['pillar.get']('enum_quest:files_root', '/srv/salt/F26_enum_lab') %}
 {% set ubuntu_ip = salt['pillar.get']('enum_quest:ubuntu_ip', '192.168.1.10') %}
 {% set win_ip = salt['pillar.get']('enum_quest:win_ip', '192.168.1.11') %}
 {% set jumpbox_ip = salt['pillar.get']('enum_quest:jumpbox_ip', '192.168.1.7') %}
@@ -66,7 +66,7 @@ enum-quest-role-missing:
 enum-quest-files:
   file.recurse:
     - name: {{ files_root }}
-    - source: salt://enum_lab
+    - source: salt://F26_enum_lab
     - clean: False
     - dir_mode: 755
     - file_mode: 755
