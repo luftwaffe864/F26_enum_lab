@@ -43,6 +43,8 @@ foreach ($f in $features) {
 }
 
 # --- Local users ---
+# Passwords must satisfy domain complexity (length + mixed chars) and must NOT
+# contain the username (e.g. "Intern!..." fails for user intern).
 Log "planting local users svc_backup, intern"
 function Ensure-LocalUser($Name, $Password, $Description) {
   $secure = ConvertTo-SecureString $Password -AsPlainText -Force
@@ -52,8 +54,8 @@ function Ensure-LocalUser($Name, $Password, $Description) {
     New-LocalUser -Name $Name -Password $secure -FullName $Name -Description $Description -PasswordNeverExpires | Out-Null
   }
 }
-Ensure-LocalUser "svc_backup" "Backup!lab1" "Backup service account"
-Ensure-LocalUser "intern" "Intern!lab1" "Temporary intern"
+Ensure-LocalUser "svc_backup" "V@ult-Enum-2026-Svc!" "Backup service account"
+Ensure-LocalUser "intern" "V@ult-Enum-2026-Tmp!" "Temporary intern"
 
 # --- SMB shares ---
 Log "planting SMB shares Public, Finance, IT$"
