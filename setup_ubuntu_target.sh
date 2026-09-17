@@ -10,6 +10,7 @@
 #
 #  Env overrides: LAB_DOMAIN, TARGET_UBUNTU_HOST, TARGET_WIN_HOST,
 #                 TARGET_UBUNTU_IP, TARGET_WIN_IP, JUMPBOX_CIDR (AXFR ACL)
+#  Defaults (same on every team pod): 192.168.1.10 / 192.168.1.11 / 192.168.1.0/24
 # =============================================================================
 set -euo pipefail
 
@@ -25,8 +26,8 @@ MODE="${1:-install}"
 LAB_DOMAIN=${LAB_DOMAIN:-vault.lab}
 TARGET_UBUNTU_HOST=${TARGET_UBUNTU_HOST:-vault-web}
 TARGET_WIN_HOST=${TARGET_WIN_HOST:-vault-dc}
-TARGET_UBUNTU_IP=${TARGET_UBUNTU_IP:-192.168.1.11}
-TARGET_WIN_IP=${TARGET_WIN_IP:-192.168.1.12}
+TARGET_UBUNTU_IP=${TARGET_UBUNTU_IP:-192.168.1.10}
+TARGET_WIN_IP=${TARGET_WIN_IP:-192.168.1.11}
 JUMPBOX_CIDR=${JUMPBOX_CIDR:-192.168.1.0/24}
 
 have() { command -v "$1" >/dev/null 2>&1; }

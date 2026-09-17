@@ -132,8 +132,8 @@ Do **not** post the zip somewhere public if it includes internal notes you care 
 
 ```bash
 # Examples — replace IPs/usernames with team30 real values
+scp -r ~/enum_lab ocig1@192.168.1.7:~/
 scp -r ~/enum_lab ocig1@192.168.1.10:~/
-scp -r ~/enum_lab ocig1@192.168.1.11:~/
 # Windows is harder over scp; use Guac upload for Windows, or copy just the .ps1
 ```
 
@@ -317,37 +317,31 @@ Open `/etc/enum-quest/targets.conf` on the jumpbox:
 cat /etc/enum-quest/targets.conf
 ```
 
-Default is:
+Every team uses the **same** addresses (pods are isolated):
 
-- Linux = `192.168.1.11`
-- Windows = `192.168.1.12`
+- Jumpbox = `192.168.1.7`
+- Linux = `192.168.1.10` (`vault-web`)
+- Windows = `192.168.1.11` (`vault-dc`)
 
-**On the jumpbox, ping them:**
+**On the jumpbox, ping the targets:**
 
 ```bash
+ping -c 2 192.168.1.10
 ping -c 2 192.168.1.11
-ping -c 2 192.168.1.12
+# or: ping -c 2 vault-web ; ping -c 2 vault-dc
 ```
 
 - If both reply → good, continue.
-- If they fail → the real IPs on team30 are different.  
-  Write down the real IPs of Ubuntu and Windows from Proxmox/Guac, then re-run setups with:
+- If they fail → check real IPs in Proxmox and re-run setup with overrides, e.g.:
 
 ```bash
-# On Ubuntu target:
-sudo TARGET_UBUNTU_IP=REAL_LINUX_IP TARGET_WIN_IP=REAL_WIN_IP ./setup_ubuntu_target.sh --state
-
-# On Kali jumpbox:
-sudo TARGET_UBUNTU_IP=REAL_LINUX_IP TARGET_WIN_IP=REAL_WIN_IP ./setup_jumpbox.sh --state
+sudo TARGET_UBUNTU_IP=… TARGET_WIN_IP=… ./setup_jumpbox.sh --state
+sudo TARGET_UBUNTU_IP=… TARGET_WIN_IP=… ./setup_ubuntu_target.sh --state
 ```
-
-And on Windows (Admin PowerShell):
 
 ```powershell
-.\setup_win_target.ps1 -UbuntuIp REAL_LINUX_IP -WinIp REAL_WIN_IP
+.\setup_win_target.ps1 -UbuntuIp … -WinIp …
 ```
-
-Replace `REAL_LINUX_IP` / `REAL_WIN_IP` with the real addresses.
 
 ---
 

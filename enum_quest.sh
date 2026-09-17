@@ -138,12 +138,12 @@ answer "Briefing or targets.conf.|vault-dc is the Windows host.|answer vault-dc"
 add_level 1 "Linux IP" \
 "What is the IPv4 address of the Linux target?  answer <ip>" \
 "You will feed this to nmap constantly." \
-answer "targets.conf has UBUNTU_IP=…|Or ping vault-web.|answer from briefing (default 192.168.1.11)"
+answer "targets.conf has UBUNTU_IP=…|Or ping vault-web.|answer 192.168.1.10"
 
 add_level 1 "Windows IP" \
 "What is the IPv4 address of the Windows target?  answer <ip>" \
 "Keep both IPs in your notes folder." \
-answer "WIN_IP in targets.conf.|ping vault-dc.|default 192.168.1.12"
+answer "WIN_IP in targets.conf.|ping vault-dc.|answer 192.168.1.11"
 
 add_level 1 "SSH port" \
 "Which TCP port is SSH listening on (Linux target)? Confirm with nmap.  answer <port>" \

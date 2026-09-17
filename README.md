@@ -1,4 +1,4 @@
-# ENUM QUEST — OCIG Enumeration Lab
+# ENUM QUEST — DCIG Enumeration Lab
 
 Interactive CLI recon lab (same style as LINUX QUEST). Each student uses their **Kali jumpbox** login (`ocig1`, `ocig2`, … — password matches username) to enumerate two targets: **Ubuntu** and **Windows Server 2019**.
 
@@ -8,20 +8,20 @@ Infra matches the cyber-range style pod model:
 
 | Item | Detail |
 |------|--------|
-| Team network | Each team gets **`192.168.1.0/24`** (isolated per team) |
-| Student jumpbox | **Kali Linux** (ocigN accounts; Salt minion) |
+| Team network | Every team pod uses the **same** **`192.168.1.0/24`** layout (pods are isolated from each other) |
+| Student jumpbox | **Kali Linux** at **`192.168.1.7`** (ocigN accounts; Salt minion) |
 | Salt master | **Admin Kali** — mentors push states to minions from here |
 | Access | Project admins: Pangolin / Proxmox / Guacamole (URL and creds from range host — do not commit secrets here) |
 
-Suggested fixed addresses inside each team's `/24` (override via env / pillar if your build differs):
+Addresses inside each team's `/24`:
 
-| Role | Hostname | Default IP |
-|------|----------|------------|
-| Jumpbox (Kali) | (student login host) | whatever the range assigns (often `.10` or similar) |
-| Ubuntu target | `vault-web` | `192.168.1.11` |
-| Windows target | `vault-dc` | `192.168.1.12` |
+| Role | Hostname | IP |
+|------|----------|-----|
+| Jumpbox (Kali) | (student login host) | **`192.168.1.7`** |
+| Ubuntu target | `vault-web` | **`192.168.1.10`** |
+| Windows target | `vault-dc` | **`192.168.1.11`** |
 
-DNS AXFR on the Ubuntu target is allowed from **`192.168.1.0/24`** so jumpboxes can transfer the zone.
+DNS AXFR on the Ubuntu target is allowed from **`192.168.1.0/24`**.
 
 ## Topology
 
@@ -52,19 +52,17 @@ In-game: `help`, `task`, `mission`, `targets`, `hint`, `answer`, `progress`, `re
 
 ## Mentor — manual provision
 
-Defaults assume `vault-web=192.168.1.11` and `vault-dc=192.168.1.12`. Override if needed:
+Defaults (same on every team): jumpbox `192.168.1.7`, `vault-web=192.168.1.10`, `vault-dc=192.168.1.11`.
 
 ```bash
-# Jumpbox (as any ocigN with sudo)
-export TARGET_UBUNTU_IP=192.168.1.11 TARGET_WIN_IP=192.168.1.12
-sudo -E ./setup_jumpbox.sh --no-switch
+# Jumpbox (as ocigN with sudo)
+sudo ./setup_jumpbox.sh --no-switch
 
 # Ubuntu target
-export JUMPBOX_CIDR=192.168.1.0/24
-sudo -E ./setup_ubuntu_target.sh --no-switch
+sudo ./setup_ubuntu_target.sh --no-switch
 
 # Windows target (Admin PowerShell)
-.\setup_win_target.ps1 -UbuntuIp 192.168.1.11 -WinIp 192.168.1.12
+.\setup_win_target.ps1
 ```
 
 ## Mentor — Salt (from admin Kali)
@@ -81,7 +79,7 @@ State file: [`salt/enum-quest.sls`](salt/enum-quest.sls).
 | Finding | Value |
 |---------|--------|
 | Briefing code | `OSPREY` |
-| Hosts | `vault-web` / `192.168.1.11`, `vault-dc` / `192.168.1.12` · domain `vault.lab` |
+| Hosts | Jumpbox `192.168.1.7` · `vault-web` / `192.168.1.10` · `vault-dc` / `192.168.1.11` · domain `vault.lab` |
 | Linux ports | `21,22,53,80,139,445` (FTP + SSH + DNS + HTTP + SMB) |
 | Win ports | `53,80,445,3389` |
 | Users | Win `svc_backup`, `intern` · Linux `webadmin`, `deploy` |

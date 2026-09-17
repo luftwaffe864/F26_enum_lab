@@ -1,0 +1,301 @@
+ENUM QUEST — MENTOR ANSWER KEY
+================================
+For mentors / testers only. Do not give this file to students.
+
+Defaults assume (same on every team pod):
+  Jumpbox Kali   = 192.168.1.7
+  Linux target   = vault-web  / 192.168.1.10
+  Windows target = vault-dc   / 192.168.1.11
+  Domain         = vault.lab
+  Network        = 192.168.1.0/24
+
+If setup used different IPs, use whatever is in /etc/enum-quest/targets.conf
+on the jumpbox after setup.
+
+
+==============================================================================
+M1 — NETWORK
+==============================================================================
+
+1) Read the briefing
+   Answer: OSPREY
+   Why: Scope starts with the written briefing. Codeword proves they read it.
+   Try:  cat ~/briefing.txt
+
+2) How many targets?
+   Answer: 2
+   Why: One Linux + one Windows host in scope.
+
+3) Linux hostname
+   Answer: vault-web
+   Why: Hostname from briefing / targets.conf (UBUNTU_HOST).
+
+4) Windows hostname
+   Answer: vault-dc
+   Why: Hostname from briefing / targets.conf (WIN_HOST).
+
+5) Linux IP
+   Answer: 192.168.1.10   (or whatever UBUNTU_IP is after setup)
+   Why: nmap/curl need an address; briefing and targets.conf list it.
+   Try:  cat /etc/enum-quest/targets.conf   OR   ping -c1 vault-web
+
+6) Windows IP
+   Answer: 192.168.1.11   (or whatever WIN_IP is after setup)
+   Why: Same idea for the Windows host.
+   Try:  ping -c1 vault-dc
+
+7) SSH port
+   Answer: 22
+   Why: Standard SSH port on the Linux target.
+   Try:  nmap -p 22 vault-web
+
+8) RDP port
+   Answer: 3389
+   Why: Standard Remote Desktop port on Windows.
+   Try:  nmap -p 3389 vault-dc
+
+9) SMB port
+   Answer: 445
+   Why: SMB file sharing over TCP (both hosts).
+   Try:  nmap -p 445 vault-web vault-dc
+
+10) FTP port
+    Answer: 21
+    Why: FTP control channel on the Linux target.
+    Try:  nmap -p 21 vault-web
+
+11) Linux open ports (comma list, no spaces)
+    Answer: 21,22,53,80,139,445
+    Why: FTP, SSH, DNS, HTTP, NetBIOS-SSN, Microsoft-DS planted on Ubuntu.
+    Try:  nmap -sT vault-web
+
+
+==============================================================================
+M2 — SERVICES
+==============================================================================
+
+12) Linux web product
+    Answer: nginx
+    Why: HTTP service fingerprint / Server header on vault-web:80.
+    Try:  nmap -sV -p 80 vault-web
+          curl -I http://vault-web
+
+13) Windows web product
+    Answer: iis   (also accepts: microsoft, microsoft-iis, etc.)
+    Why: IIS is the Windows HTTP stack on vault-dc:80.
+    Try:  nmap -sV -p 80 vault-dc
+          curl -I http://vault-dc
+
+14) SSH product
+    Answer: openssh
+    Why: OpenSSH banner/version on port 22.
+    Try:  nmap -sV -p 22 vault-web
+
+15) DNS service name (nmap label)
+    Answer: domain   (also accepts: dns)
+    Why: nmap’s common service name for port 53.
+    Try:  nmap -p 53 vault-web
+
+16) SMB service name (nmap label)
+    Answer: microsoft-ds   (also accepts: smb)
+    Why: nmap’s common service name for port 445.
+    Try:  nmap -p 445 vault-dc
+
+17) FTP service name
+    Answer: ftp
+    Why: nmap labels port 21 as ftp.
+    Try:  nmap -p 21 vault-web
+
+18) HTTP port
+    Answer: 80
+    Why: Plain HTTP on both sites in this lab.
+    Try:  nmap -p 80 vault-web vault-dc
+
+19) DNS port
+    Answer: 53
+    Why: DNS listens on 53 (UDP/TCP).
+    Try:  nmap -p 53 vault-web
+
+
+==============================================================================
+M3 — USERS
+==============================================================================
+
+20) Windows service account
+    Answer: svc_backup
+    Why: Planted local account for “backup service” style naming.
+    Try:  enum4linux -U vault-dc
+          nmap --script smb-enum-users -p 445 vault-dc
+
+21) Windows intern
+    Answer: intern
+    Why: Second non-admin lab user on Windows.
+    Try:  same user-enum commands as above
+
+22) Linux web user
+    Answer: webadmin
+    Why: Samba/Unix account planted on the Ubuntu target.
+    Try:  enum4linux -U vault-web
+
+23) Linux deploy user
+    Answer: deploy
+    Why: Automation-style Samba/Unix account on Ubuntu.
+    Try:  enum4linux -U vault-web
+
+24) Tool check (any one of these)
+    Answer: enum4linux
+            (also accepts: enum4linux-ng, smbclient, rpcclient, nmap)
+    Why: Confirms they know a valid SMB/user-enum tool from Kali.
+
+
+==============================================================================
+M4 — SHARES (FTP first, then SMB)
+==============================================================================
+
+25) FTP port confirm
+    Answer: 21
+    Why: Re-check before using the ftp client.
+    Try:  nmap -p 21 vault-web
+
+26) Anonymous FTP?
+    Answer: yes
+    Why: vsftpd allows anonymous login (lab intentional misconfig).
+    Try:  ftp vault-web
+          (user: anonymous   password: blank or any email)
+
+27) FTP flag file name
+    Answer: flag.txt
+    Why: File under anonymous pub/ folder.
+    Try:  after login:  cd pub   then   ls
+
+28) FTP flag
+    Answer: FLAG{ftp_anon_loot}
+    Why: Contents of pub/flag.txt.
+    Try:  get flag.txt   then   cat flag.txt
+
+29) Windows Public share
+    Answer: Public
+    Why: Readable SMB share meant for everyone.
+    Try:  smbclient -L //vault-dc -N
+
+30) Windows Finance share
+    Answer: Finance
+    Why: Listed share that looks sensitive / restricted.
+    Try:  smbclient -L //vault-dc -N
+
+31) Hidden IT share
+    Answer: IT$
+    Why: Trailing $ marks a “hidden” share name.
+    Try:  look for IT$ in smbclient -L output
+
+32) Public share flag
+    Answer: FLAG{smb_public_read}
+    Why: File welcome.txt on the Public share.
+    Try:  smbclient //vault-dc/Public -N
+          get welcome.txt
+          cat welcome.txt
+
+33) Linux Samba share name
+    Answer: teamfiles
+    Why: Guest-readable Samba share on vault-web.
+    Try:  smbclient -L //vault-web -N
+
+34) Linux share flag
+    Answer: FLAG{linux_share_loot}
+    Why: loot.txt inside teamfiles.
+    Try:  smbclient //vault-web/teamfiles -N
+          get loot.txt
+          cat loot.txt
+
+
+==============================================================================
+M5 — WEB
+==============================================================================
+
+35) robots.txt admin path (Linux)
+    Answer: /admin
+    Why: Disallow line points to a hidden admin path.
+    Try:  curl http://vault-web/robots.txt
+
+36) robots.txt backup path (Linux)
+    Answer: /backup
+    Why: Second Disallow on Linux robots.txt.
+    Try:  curl http://vault-web/robots.txt
+
+37) Admin page flag
+    Answer: FLAG{web_admin_panel}
+    Why: Content on http://vault-web/admin/
+    Try:  curl http://vault-web/admin/
+
+38) Backup notes flag
+    Answer: FLAG{nginx_backup_note}
+    Why: Content on http://vault-web/backup/notes.txt
+    Try:  curl http://vault-web/backup/notes.txt
+
+39) ffuf / Windows secret path
+    Answer: /secret   (also accepts: secret)
+    Why: Hidden IIS path; also listed in Windows robots.txt.
+    Try:  ffuf -u http://vault-dc/FUZZ -w ~/wordlists/common.txt
+          curl http://vault-dc/robots.txt
+
+40) IIS secret flag
+    Answer: FLAG{iis_secret_stash}
+    Why: Content on http://vault-dc/secret/
+    Try:  curl http://vault-dc/secret/
+
+
+==============================================================================
+M6 — DNS
+==============================================================================
+
+41) Lab domain
+    Answer: vault.lab
+    Why: Domain from briefing / targets.conf / zone name.
+    Try:  cat ~/briefing.txt
+
+42) MX host
+    Answer: mail.vault.lab
+    Why: Mail exchanger record in the zone.
+    Try:  dig MX vault.lab @vault-web
+
+43) A record FQDN for Linux web host
+    Answer: vault-web.vault.lab
+    Why: A record name for the Ubuntu host in the zone.
+    Try:  dig A vault-web.vault.lab @vault-web
+          dig AXFR vault.lab @vault-web
+
+44) Zone transfer TXT flag
+    Answer: FLAG{dns_zone_transfer}
+    Why: Bind allows AXFR from the team network; TXT record holds the flag.
+    Try:  dig AXFR vault.lab @vault-web
+
+45) A record FQDN for Windows host
+    Answer: vault-dc.vault.lab
+    Why: A record name for the Windows host in the zone.
+    Try:  dig AXFR vault.lab @vault-web
+
+
+==============================================================================
+QUICK FLAG LIST (all FLAG{...} answers)
+==============================================================================
+
+FLAG{ftp_anon_loot}
+FLAG{smb_public_read}
+FLAG{linux_share_loot}
+FLAG{web_admin_panel}
+FLAG{nginx_backup_note}
+FLAG{iis_secret_stash}
+FLAG{dns_zone_transfer}
+
+
+==============================================================================
+NOTES FOR MENTORS
+==============================================================================
+
+- Students submit with:  answer <value>
+- Answers are case-insensitive for most checks (flags still shown uppercase).
+- If IPs were overridden at setup time, use the values in:
+    /etc/enum-quest/answers
+    /etc/enum-quest/targets.conf
+- This file matches the lab as built in this repo. If you edit planted
+  services/flags, update this key too.

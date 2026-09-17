@@ -9,19 +9,19 @@
 
 .EXAMPLE
   .\setup_win_target.ps1
-  .\setup_win_target.ps1 -LabDomain vault.lab -UbuntuHost vault-web -WinHost vault-dc `
-      -UbuntuIp 192.168.1.11 -WinIp 192.168.1.12
+  .\setup_win_target.ps1 -UbuntuIp 192.168.1.10 -WinIp 192.168.1.11
 #>
 param(
   [string]$LabDomain = $(if ($env:LAB_DOMAIN) { $env:LAB_DOMAIN } else { "vault.lab" }),
   [string]$UbuntuHost = $(if ($env:TARGET_UBUNTU_HOST) { $env:TARGET_UBUNTU_HOST } else { "vault-web" }),
   [string]$WinHost = $(if ($env:TARGET_WIN_HOST) { $env:TARGET_WIN_HOST } else { "vault-dc" }),
-  [string]$UbuntuIp = $(if ($env:TARGET_UBUNTU_IP) { $env:TARGET_UBUNTU_IP } else { "192.168.1.11" }),
-  [string]$WinIp = $(if ($env:TARGET_WIN_IP) { $env:TARGET_WIN_IP } else { "192.168.1.12" })
+  [string]$UbuntuIp = $(if ($env:TARGET_UBUNTU_IP) { $env:TARGET_UBUNTU_IP } else { "192.168.1.10" }),
+  [string]$WinIp = $(if ($env:TARGET_WIN_IP) { $env:TARGET_WIN_IP } else { "192.168.1.11" })
 )
 
 $ErrorActionPreference = "Stop"
 function Log($m) { Write-Host "[win-target] $m" }
+Log "Ubuntu $UbuntuIp / Windows $WinIp"
 
 # --- Features ---
 Log "ensuring IIS, DNS, File Services"

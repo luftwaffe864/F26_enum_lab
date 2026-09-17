@@ -1,0 +1,12 @@
+# Local / generated
+enum_lab_for_vms.zip
+*.zip
+.DS_Store
+Thumbs.db
+*.bak
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+*~

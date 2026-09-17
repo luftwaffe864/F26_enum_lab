@@ -12,12 +12,13 @@
 #    sudo ./setup_jumpbox.sh --state      refresh briefing / answers / hosts only
 #    sudo ./setup_jumpbox.sh --user ocig3  force which login account owns the lab
 #
-#  Environment (Salt pillar / mentor overrides):
-#    TARGET_UBUNTU_IP   default 192.168.1.11
-#    TARGET_WIN_IP      default 192.168.1.12
-#    TARGET_UBUNTU_HOST default vault-web
-#    TARGET_WIN_HOST    default vault-dc
-#    LAB_DOMAIN         default vault.lab
+#  Each team pod uses the same addressing (isolated 192.168.1.0/24):
+#    Jumpbox Kali     192.168.1.7
+#    Ubuntu target    192.168.1.10  (vault-web)
+#    Windows target   192.168.1.11  (vault-dc)
+#
+#  Environment overrides: TARGET_UBUNTU_IP, TARGET_WIN_IP, JUMPBOX_IP,
+#    TARGET_UBUNTU_HOST, TARGET_WIN_HOST, LAB_DOMAIN, JUMPBOX_CIDR
 # =============================================================================
 set -euo pipefail
 
@@ -36,11 +37,13 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-TARGET_UBUNTU_IP=${TARGET_UBUNTU_IP:-192.168.1.11}
-TARGET_WIN_IP=${TARGET_WIN_IP:-192.168.1.12}
+JUMPBOX_IP=${JUMPBOX_IP:-192.168.1.7}
+TARGET_UBUNTU_IP=${TARGET_UBUNTU_IP:-192.168.1.10}
+TARGET_WIN_IP=${TARGET_WIN_IP:-192.168.1.11}
 TARGET_UBUNTU_HOST=${TARGET_UBUNTU_HOST:-vault-web}
 TARGET_WIN_HOST=${TARGET_WIN_HOST:-vault-dc}
 LAB_DOMAIN=${LAB_DOMAIN:-vault.lab}
+JUMPBOX_CIDR=${JUMPBOX_CIDR:-192.168.1.0/24}
 
 LIB=/usr/local/lib/enum-quest
 CFG=/etc/enum-quest
@@ -56,7 +59,6 @@ is_kali() {
 }
 
 apt_try() {
-  # Install packages that exist; skip quietly if a name is missing on this distro
   local p
   for p in "$@"; do
     if apt-cache show "$p" >/dev/null 2>&1; then
@@ -72,7 +74,6 @@ resolve_player() {
   elif [[ -n "${SUDO_USER:-}" && "$SUDO_USER" != "root" ]]; then
     u="$SUDO_USER"
   else
-    # Prefer ocigN accounts if present (lab convention: ocig1, ocig2, …)
     u=$(getent passwd | awk -F: '$1 ~ /^ocig[0-9]+$/ {print $1; exit}')
   fi
   if [[ -z "$u" ]] || ! id "$u" >/dev/null 2>&1; then
@@ -152,11 +153,14 @@ write_targets_and_answers() {
   install -d -m 755 "$CFG"
   cat > "$CFG/targets.conf" <<EOF
 # ENUM QUEST targets (edited by setup / Salt)
+# Each team pod uses the same IPs on an isolated 192.168.1.0/24
+JUMPBOX_IP=$JUMPBOX_IP
 UBUNTU_HOST=$TARGET_UBUNTU_HOST
 UBUNTU_IP=$TARGET_UBUNTU_IP
 WIN_HOST=$TARGET_WIN_HOST
 WIN_IP=$TARGET_WIN_IP
 LAB_DOMAIN=$LAB_DOMAIN
+JUMPBOX_CIDR=$JUMPBOX_CIDR
 EOF
   chmod 644 "$CFG/targets.conf"
 
@@ -248,9 +252,11 @@ You are on a Kali jumpbox. Your job is to enumerate two systems on the lab netwo
 without exploiting them. Map what is there, then move on.
 
 Targets (also in /etc/enum-quest/targets.conf):
+  Your jumpbox: $JUMPBOX_IP
   Linux  : $TARGET_UBUNTU_HOST  ($TARGET_UBUNTU_IP)
   Windows: $TARGET_WIN_HOST   ($TARGET_WIN_IP)
   Domain : $LAB_DOMAIN
+  Network: $JUMPBOX_CIDR  (same layout on every team pod)
 
 Missions:
   1. NETWORK   - find live hosts and open ports (nmap)
@@ -271,6 +277,7 @@ EOF
 # ---------------------------------------------------------------------------
 resolve_player
 log "player account: $PLAYER  home: $H"
+log "targets $TARGET_UBUNTU_IP / $TARGET_WIN_IP  (jumpbox $JUMPBOX_IP)"
 
 case "$MODE" in
   install)
