@@ -1,442 +1,100 @@
-# F26_enum_lab
+# ENUM QUEST — DCIG Enumeration Lab
 
-# How to test ENUM QUEST on team30 (beginner guide)
+Interactive CLI recon lab (same style as LINUX QUEST). Each student uses their **Kali jumpbox** login (`ocig1`, `ocig2`, … — password matches username) to enumerate two targets: **Ubuntu** and **Windows Server 2019**.
 
-You have never done this before — that is fine. Follow these steps **in order**.  
-Do not skip the snapshot step.
+## Range / hosting notes
 
-**Goal:** Put the lab on **team30 only**, try it, and be able to undo everything if something breaks.
+Infra matches the cyber-range style pod model:
 
----
+| Item | Detail |
+|------|--------|
+| Team network | Each team gets **`192.168.1.0/24`** (isolated per team) |
+| Student jumpbox | **Kali Linux** (ocigN accounts; Salt minion) |
+| Salt master | **Admin Kali** — mentors push states to minions from here |
+| Access | Project admins: Pangolin / Proxmox / Guacamole (URL and creds from range host — do not commit secrets here) |
 
-## What you are working with (simple picture)
+Suggested fixed addresses inside each team's `/24` (override via env / pillar if your build differs):
 
-Think of three student machines on team30’s private network:
+| Role | Hostname | Default IP |
+|------|----------|------------|
+| Jumpbox (Kali) | (student login host) | whatever the range assigns (often `.10` or similar) |
+| Ubuntu target | `vault-web` | `192.168.1.11` |
+| Windows target | `vault-dc` | `192.168.1.12` |
 
-1. **Kali jumpbox** — where the student logs in (`ocig1`, etc.) and runs `enum-quest`
-2. **Ubuntu target** — the Linux machine students scan (`vault-web`)
-3. **Windows target** — the Windows machine students scan (`vault-dc`)
+DNS AXFR on the Ubuntu target is allowed from **`192.168.1.0/24`** so jumpboxes can transfer the zone.
 
-There is also an **admin Kali** (for mentors). That machine is the **Salt master** — the “remote control” that can set up the other machines.
+## Topology
 
-You will:
+| Role | OS | Setup script |
+|------|-----|--------------|
+| Jumpbox | **Kali Linux** | `setup_jumpbox.sh` |
+| Target A | Ubuntu | `setup_ubuntu_target.sh` |
+| Target B | Windows Server 2019 | `setup_win_target.ps1` |
 
-1. Take a safety save-point (snapshot)
-2. Copy our lab files onto the admin Kali
-3. Run setup on the three team30 machines
-4. Log into the jumpbox and try the game
+Missions: **Network → Services → Users → Shares → Web → DNS**
 
----
+## Student (jumpbox)
 
-## Words you will see
-
-| Word | Meaning |
-|------|---------|
-| **Proxmox** | The website/panel that shows all the VMs (virtual computers). You take snapshots here. |
-| **Snapshot** | A save-point. Like “undo” for a whole computer. |
-| **Guacamole / Guac** | A website that gives you a remote desktop or terminal into a VM. |
-| **Salt / minion** | Software that lets the admin Kali configure other VMs. You can also set things up by hand if Salt is confusing. |
-| **Jumpbox** | The Kali the student uses. |
-| **Target** | The machine being scanned (Ubuntu or Windows). |
-
----
-
-## Before you start — checklist
-
-- [ ] You can open the range portal (Pangolin) and log in as a project admin  
-  (password was shared with you separately — do not put it in this folder/git)
-- [ ] You can open **Proxmox**
-- [ ] You can open a desktop/terminal to the **admin Kali** and to **team30** VMs
-- [ ] This lab folder is on your computer: `enum_lab` (with `setup_jumpbox.sh`, etc.)
-
-If any of those fail, stop and ask the range host for access help before changing anything.
-
----
-
-# PART 0 — How do I get the scripts onto the VMs?
-
-Your lab files live on **your Windows PC** right now:
-
-`C:\Users\cod08\enum_lab`
-
-The VMs are **other computers**. You must copy the files over.  
-A zip is already prepared for you:
-
-`C:\Users\cod08\enum_lab\enum_lab_for_vms.zip`
-
-Pick **one** method below. Method 1 is usually easiest.
-
----
-
-## Method 1 — Upload through Guacamole (easiest if available)
-
-Many ranges let you upload files inside the Guac window.
-
-1. Open Guacamole and connect to a VM (start with **admin Kali** or the **team30 Kali jumpbox**).
-2. Look for a way to send files:
-   - Sometimes a **folder / file icon** in the Guac menu (often left side or Ctrl+Alt+Shift opens a panel)
-   - Or drag-and-drop a file into the session window
-3. Upload `enum_lab_for_vms.zip` from your PC.
-4. On Linux (Kali/Ubuntu), find where it landed (often your home folder), then unzip:
-
-```bash
-cd ~
-ls *.zip
-unzip enum_lab_for_vms.zip -d enum_lab
-cd enum_lab
-ls
-```
-
-You should see `setup_jumpbox.sh`, `enum_quest.sh`, etc.
-
-5. Repeat for the other VMs **or** copy from this first Linux box to the others (Method 3).
-
-**Windows tip:** After upload, move/unzip with File Explorer, or in PowerShell:
-
-```powershell
-Expand-Archive -Path .\enum_lab_for_vms.zip -DestinationPath .\enum_lab -Force
-cd .\enum_lab
-```
-
-If Guac has **no** upload at all, use Method 2 or ask the range host:  
-“How do project admins copy files into team VMs?”
-
----
-
-## Method 2 — Put the zip on the internet, then download inside the VM
-
-Good when Guac cannot upload.
-
-1. On your PC, upload `enum_lab_for_vms.zip` somewhere **you** control, for example:
-   - a private GitHub release / gist (zip attached)
-   - Discord to yourself (then open Discord **inside** the VM and download)
-   - OneDrive/Google Drive link (download inside the VM)
-2. Inside the Linux VM:
-
-```bash
-cd ~
-# Example if you have a direct URL:
-wget -O enum_lab_for_vms.zip "PASTE_YOUR_LINK_HERE"
-unzip enum_lab_for_vms.zip -d enum_lab
-cd enum_lab
-ls
-```
-
-Do **not** post the zip somewhere public if it includes internal notes you care about. A private link is fine for class testing.
-
----
-
-## Method 3 — Copy once to admin Kali, then to team30 (nice long-term)
-
-1. Get the zip onto **admin Kali** (Method 1 or 2).
-2. Unzip there.
-3. From admin Kali, copy to team30 machines (you need their IPs — ask or look in Proxmox):
-
-```bash
-# Examples — replace IPs/usernames with team30 real values
-scp -r ~/enum_lab ocig1@192.168.1.10:~/
-scp -r ~/enum_lab ocig1@192.168.1.11:~/
-# Windows is harder over scp; use Guac upload for Windows, or copy just the .ps1
-```
-
-For Windows, Guac upload of `setup_win_target.ps1` (or the whole zip) is usually simplest.
-
----
-
-## Method 4 — Git clone (if you push this folder to GitHub)
-
-1. Create a GitHub repo and push `enum_lab` (optional; ask me if you want help).
-2. On each Linux VM:
-
-```bash
-sudo apt-get update
-sudo apt-get install -y git
-git clone https://github.com/YOUR_USER/YOUR_REPO.git enum_lab
-cd enum_lab
-ls
-```
-
----
-
-## What each VM needs
-
-| VM | Files needed |
-|----|----------------|
-| Kali jumpbox | Whole folder (especially `setup_jumpbox.sh`, `enum_quest.sh`, `wordlists/`) |
-| Ubuntu target | At least `setup_ubuntu_target.sh` (whole folder is fine) |
-| Windows target | At least `setup_win_target.ps1` (whole folder is fine) |
-
-After the files are on a VM, go back to **PART A** (snapshots), then **PART B** (run the setups).
-
----
-
-# PART A — Make a safety save-point (do this first)
-
-### Step A1 — Open Proxmox
-
-1. Log into the range portal.
-2. Open **Proxmox**.
-
-### Step A2 — Find team30 machines
-
-1. Look at the list of VMs (left side or datacenter list).
-2. Find anything named like **team30**, **t30**, or similar.
-3. You want the **three** machines for this lab (Kali jumpbox, Ubuntu, Windows).  
-   If you are not sure which is which, write down the names and ask a mentor/range host before continuing.
-
-### Step A3 — Snapshot each team30 VM
-
-For **each** of those three VMs:
-
-1. Click the VM name.
-2. Click **Snapshot** (sometimes under a menu).
-3. Click **Take Snapshot** (or similar).
-4. Name it exactly something like:  
-   `before-enum-quest`
-5. Add a note if you want: `safe point before testing enum lab`
-6. Wait until it says it finished (no spinning / “running” forever).
-
-**Do not continue until all three snapshots are done.**
-
-If you mess up later: open that VM → Snapshot → select `before-enum-quest` → **Rollback**. That puts the VM back to how it was.
-
----
-
-# PART B — Easiest path for a first test (manual setup)
-
-Salt is powerful but easy to aim at the wrong machine if you are new.  
-For your **first** test, set each machine up by hand. Same result, less risk.
-
-You will need to get our lab files onto each machine (or at least onto admin Kali and copy from there). Pick one way:
-
-### Option 1 — USB / download / shared folder (whatever your range allows)
-
-Copy the whole `enum_lab` folder onto:
-
-- the Ubuntu target
-- the Kali jumpbox
-- the Windows target (at least `setup_win_target.ps1`)
-
-### Option 2 — From admin Kali with `scp` (if you know the IPs)
-
-Someone more experienced can help with this. You only need the files present on each VM before running the commands below.
-
----
-
-## Step B1 — Set up the Ubuntu target
-
-1. Open a terminal on the **Ubuntu target** (Guac/SSH).
-2. Go to the folder that has the scripts:
-
-```bash
-cd /path/to/enum_lab
-```
-
-(Replace `/path/to/enum_lab` with the real folder, e.g. `cd ~/enum_lab` or `cd /home/ocig1/enum_lab`.)
-
-3. Run:
-
-```bash
-sudo ./setup_ubuntu_target.sh --no-switch
-```
-
-4. Wait until it prints that the ubuntu target is ready.  
-   If it asks for your password, that is normal (`ocigN` password is usually the same as the username).
-
-5. Quick check (optional):
-
-```bash
-curl -I http://127.0.0.1
-```
-
-You should see something like `HTTP` and `nginx` or `Server`.
-
----
-
-## Step B2 — Set up the Windows target
-
-1. Open the **Windows Server 2019** VM.
-2. Open **PowerShell as Administrator**  
-   (right-click PowerShell → Run as administrator).
-3. Go to the folder with `setup_win_target.ps1`:
-
-```powershell
-cd C:\path\to\enum_lab
-```
-
-4. If Windows blocks scripts, run once:
-
-```powershell
-Set-ExecutionPolicy Bypass -Scope Process -Force
-```
-
-5. Run:
-
-```powershell
-.\setup_win_target.ps1
-```
-
-6. Wait until it prints that the windows target is ready.  
-   The first run can take a while (IIS/DNS features).
-
----
-
-## Step B3 — Set up the Kali jumpbox
-
-1. Open a terminal on the **team30 Kali jumpbox** (not necessarily the admin Kali).
-2. Log in as your student-style user if needed (`ocig1`, `ocig2`, …).
-3. Go to the lab folder:
-
-```bash
-cd /path/to/enum_lab
-```
-
-4. Run:
-
-```bash
-sudo ./setup_jumpbox.sh --no-switch
-```
-
-This installs/checks tools and installs the `enum-quest` command for **your** user (the one who typed `sudo`).
-
-5. Confirm:
-
-```bash
-which enum-quest
-ls ~/briefing.txt
-cat /etc/enum-quest/targets.conf
-```
-
-You should see the game command, a briefing file, and IPs for `vault-web` / `vault-dc`.
-
----
-
-## Step B4 — Important IP check
-
-Open `/etc/enum-quest/targets.conf` on the jumpbox:
-
-```bash
-cat /etc/enum-quest/targets.conf
-```
-
-Default is:
-
-- Linux = `192.168.1.11`
-- Windows = `192.168.1.12`
-
-**On the jumpbox, ping them:**
-
-```bash
-ping -c 2 192.168.1.11
-ping -c 2 192.168.1.12
-```
-
-- If both reply → good, continue.
-- If they fail → the real IPs on team30 are different.  
-  Write down the real IPs of Ubuntu and Windows from Proxmox/Guac, then re-run setups with:
-
-```bash
-# On Ubuntu target:
-sudo TARGET_UBUNTU_IP=REAL_LINUX_IP TARGET_WIN_IP=REAL_WIN_IP ./setup_ubuntu_target.sh --state
-
-# On Kali jumpbox:
-sudo TARGET_UBUNTU_IP=REAL_LINUX_IP TARGET_WIN_IP=REAL_WIN_IP ./setup_jumpbox.sh --state
-```
-
-And on Windows (Admin PowerShell):
-
-```powershell
-.\setup_win_target.ps1 -UbuntuIp REAL_LINUX_IP -WinIp REAL_WIN_IP
-```
-
-Replace `REAL_LINUX_IP` / `REAL_WIN_IP` with the real addresses.
-
----
-
-# PART C — Play / test the lab
-
-1. On the **Kali jumpbox**, as `ocigN`:
+Log in as yourself (`ocigN` / `ocigN`), then:
 
 ```bash
 enum-quest
 ```
 
-2. When it asks your name, type anything (or your name).
-3. Type `help` and press Enter.
-4. Type `targets` to see the hosts.
-5. Follow the first tasks. Example early answers:
-
-```text
-cat briefing.txt
-answer OSPREY
-```
-
-6. Try real tools in the game prompt, for example:
+No separate `student` account. Mentors install with your user via sudo:
 
 ```bash
-nmap -p 21,22,53,80,139,445 vault-web
+sudo ./setup_jumpbox.sh --no-switch
+# uses $SUDO_USER (ocigN). To force:  sudo ./setup_jumpbox.sh --user ocig3 --no-switch
 ```
 
-If levels accept answers and nmap shows open ports, **your test worked**.
+In-game: `help`, `task`, `mission`, `targets`, `hint`, `answer`, `progress`, `reset`, `quit`.
 
-Type `quit` when you want to leave (progress is saved).
+## Mentor — manual provision
 
----
+Defaults assume `vault-web=192.168.1.11` and `vault-dc=192.168.1.12`. Override if needed:
 
-# PART D — If something goes wrong
+```bash
+# Jumpbox (as any ocigN with sudo)
+export TARGET_UBUNTU_IP=192.168.1.11 TARGET_WIN_IP=192.168.1.12
+sudo -E ./setup_jumpbox.sh --no-switch
 
-1. Stop running more setup commands.
-2. Go back to **Proxmox**.
-3. Select the VM that broke.
-4. Open **Snapshot**.
-5. Select `before-enum-quest`.
-6. Click **Rollback** (or Restore).
-7. Confirm.
+# Ubuntu target
+export JUMPBOX_CIDR=192.168.1.0/24
+sudo -E ./setup_ubuntu_target.sh --no-switch
 
-That VM is back to before your test.  
-Tell a mentor what failed (copy the error text).
+# Windows target (Admin PowerShell)
+.\setup_win_target.ps1 -UbuntuIp 192.168.1.11 -WinIp 192.168.1.12
+```
 
----
+## Mentor — Salt (from admin Kali)
 
-# PART E — Salt later (optional, after manual test works)
+1. Copy this repo onto the Salt master (admin Kali), e.g. as `salt://enum_lab`.
+2. Set minion grains per VM: `role: jumpbox` | `ubuntu-target` | `win-target`.
+3. Pillar: see [`salt/pillar.example`](salt/pillar.example) (`192.168.1.0/24` defaults). Pin a student with `player_user: ocig12` if needed.
+4. Apply from the master, e.g. `salt -G 'role:jumpbox' state.apply enum-quest` (and the other roles).
 
-Only do this after a manual test worked once, or with someone watching.
+State file: [`salt/enum-quest.sls`](salt/enum-quest.sls).
 
-Salt = “run the same setup from the admin Kali remotely.”
+## Defaults planted for answers
 
-Rough idea:
+| Finding | Value |
+|---------|--------|
+| Briefing code | `OSPREY` |
+| Hosts | `vault-web` / `192.168.1.11`, `vault-dc` / `192.168.1.12` · domain `vault.lab` |
+| Linux ports | `21,22,53,80,139,445` (FTP + SSH + DNS + HTTP + SMB) |
+| Win ports | `53,80,445,3389` |
+| Users | Win `svc_backup`, `intern` · Linux `webadmin`, `deploy` |
+| File services | FTP anon `pub/flag.txt` → `FLAG{ftp_anon_loot}` · SMB `Public` / `teamfiles` |
+| Shares | `Public`, `Finance`, `IT$`, `teamfiles` |
+| Flags | `FLAG{ftp_anon_loot}`, `FLAG{smb_public_read}`, `FLAG{linux_share_loot}`, `FLAG{web_admin_panel}`, `FLAG{nginx_backup_note}`, `FLAG{iis_secret_stash}`, `FLAG{dns_zone_transfer}` |
 
-1. Copy `enum_lab` onto the **admin Kali**.
-2. Point Salt at only **team30** minion names (never `salt '*'` for this test).
-3. Apply one machine at a time.
+Answer key on the jumpbox: `/etc/enum-quest/answers` (mode 644 for classroom play without passwordless sudo).
 
-Exact minion names depend on how the range was built. Ask the range host:
+## Previous lab (reference)
 
-> “What are the Salt minion IDs for team30 jumpbox, Ubuntu, and Windows?”
+The original **LINUX QUEST** (Linux Basics / IR) scripts live in [`previous_lab/`](previous_lab/) for reference only. ENUM QUEST does not use them.
 
-Then use the more advanced notes in the repo README / Salt files — or ask me again with those three names and I will give you the exact three commands.
+## Safe test on team30
 
----
-
-## Super-short version
-
-1. **Proxmox → snapshot all team30 VMs** (`before-enum-quest`)
-2. Run `setup_ubuntu_target.sh` on Ubuntu
-3. Run `setup_win_target.ps1` on Windows
-4. Run `setup_jumpbox.sh` on Kali jumpbox
-5. Fix IPs if ping fails
-6. Run `enum-quest` and try a few levels
-7. If broken → **Rollback** snapshot
-
----
-
-## When you are stuck
-
-Send me (or a mentor) these four things — no passwords:
-
-1. The three team30 VM names as shown in Proxmox  
-2. Their IP addresses  
-3. Which step you were on (A / B1 / B2 / B3 / C)  
-4. The exact error text from the terminal  
-
-I can then tell you the next single command to run.
+See [`MENTOR_TEST_team30.md`](MENTOR_TEST_team30.md) — snapshot in Proxmox first, then apply only team30 minions.
