@@ -59,18 +59,49 @@ Ensure-LocalUser "svc_backup" 'X9#mK2$pL7!qR4@wN8z' "Backup service account"
 Ensure-LocalUser "intern" 'Y8@nJ3#vQ6!tH5$uM2x' "Temporary intern"
 
 # --- Allow null-session / anonymous SAM enum (needed for enum4linux -U) ---
-# Modern Windows defaults block this; the lab intentionally softens it.
+# Modern Windows (and domain GPOs) often block this. We soften locally AND
+# plant a Public share staff list so the Users mission still works.
 Log "allowing anonymous SAM / null session enumeration (lab only)"
 $lsa = "HKLM:\SYSTEM\CurrentControlSet\Control\Lsa"
 New-ItemProperty -Path $lsa -Name "RestrictAnonymousSAM" -PropertyType DWord -Value 0 -Force | Out-Null
 New-ItemProperty -Path $lsa -Name "RestrictAnonymous" -PropertyType DWord -Value 0 -Force | Out-Null
 New-ItemProperty -Path $lsa -Name "EveryoneIncludesAnonymous" -PropertyType DWord -Value 1 -Force | Out-Null
+New-ItemProperty -Path $lsa -Name "ForceGuest" -PropertyType DWord -Value 0 -Force | Out-Null
 $lanman = "HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters"
-New-ItemProperty -Path $lanman -Name "NullSessionShares" -PropertyType MultiString -Value @("Public") -Force | Out-Null
+New-ItemProperty -Path $lanman -Name "NullSessionShares" -PropertyType MultiString -Value @("Public","IPC$") -Force | Out-Null
 New-ItemProperty -Path $lanman -Name "RestrictNullSessAccess" -PropertyType DWord -Value 0 -Force | Out-Null
-# Apply without full reboot when possible
+
+# Enable Guest for anonymous SMB (password blank; may still be GPO-limited)
+try {
+  $guest = Get-LocalUser -Name "Guest" -ErrorAction Stop
+  Enable-LocalUser -Name "Guest" -ErrorAction SilentlyContinue
+  # Empty guest password where policy allows
+  try {
+    $empty = ConvertTo-SecureString "G#u3st-Lab-2026!xQ" -AsPlainText -Force
+    Set-LocalUser -Name "Guest" -Password $empty -ErrorAction SilentlyContinue
+  } catch {}
+} catch {}
+
+# Local security policy (may lose to domain GPO, but helps standalone boxes)
+$inf = @"
+[Unicode]
+Unicode=yes
+[System Access]
+[Registry Values]
+MACHINE\System\CurrentControlSet\Control\Lsa\RestrictAnonymousSAM=4,0
+MACHINE\System\CurrentControlSet\Control\Lsa\RestrictAnonymous=4,0
+MACHINE\System\CurrentControlSet\Control\Lsa\EveryoneIncludesAnonymous=4,1
+[Version]
+signature="`$CHICAGO`$"
+Revision=1
+"@
+$infPath = "C:\Windows\Temp\enum-quest-anon.inf"
+$dbPath = "C:\Windows\Temp\enum-quest-anon.sdb"
+Set-Content -Path $infPath -Value $inf -Encoding Unicode
+secedit /configure /db $dbPath /cfg $infPath /areas SECURITYPOLICY | Out-Null
+
 try { Restart-Service LanmanServer -Force -ErrorAction Stop } catch {
-  Log "WARN: restart LanmanServer later if user enum still fails"
+  Log "WARN: restart LanmanServer / reboot if user enum still fails"
 }
 
 # --- SMB shares ---
@@ -80,6 +111,12 @@ $finance = "C:\Shares\Finance"
 $it = "C:\Shares\IT"
 New-Item -ItemType Directory -Force -Path $public, $finance, $it | Out-Null
 Set-Content -Path "$public\welcome.txt" -Value "Welcome to the Public share.`r`nFLAG{smb_public_read}`r`n"
+# Fallback for Users mission when null-session SAM enum is blocked by GPO
+Set-Content -Path "$public\staff.txt" -Value @"
+Vault Corp - staff directory (do not post externally)
+svc_backup - backup service account
+intern - temporary intern
+"@
 Set-Content -Path "$finance\ledger.txt" -Value "confidential finance data - access denied to guests"
 Set-Content -Path "$it\inventory.txt" -Value "IT$ hidden share inventory"
 

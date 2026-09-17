@@ -80,11 +80,12 @@ Confirm SSH, DNS, FTP, and SMB service names
 Practice nmap version detection (-sV)"
 
 add_mission "USERS" "M3" \
-"Accounts leak through SMB and OS enumeration. Pull usernames from the Windows
-box and from Samba on Linux without logging in as an admin." \
+"Accounts leak through SMB and shared files. Pull usernames from the Windows
+box (enum4linux if null sessions work, or the Public share staff list) and from
+Samba on Linux." \
 "Enumerate Windows local accounts (svc_backup, intern)
 Enumerate Linux Samba users (webadmin, deploy)
-Use enum4linux and/or smbclient / nmap scripts"
+Use enum4linux, smbclient, and/or nmap scripts"
 
 add_mission "SHARES" "M4" \
 "File services often expose more than SMB. Start with anonymous FTP on Linux,
@@ -215,13 +216,13 @@ answer "DNS is 53.|answer 53"
 # ---------------- M3 USERS ----------------
 add_level 3 "Windows service account" \
 "Find the backup-related local username on the Windows target.  answer <username>" \
-"enum4linux -U or smb null-session user lists." \
-answer "enum4linux -U vault-dc|Or nmap --script smb-enum-users -p 445 vault-dc|answer svc_backup"
+"Try enum4linux -U. If null sessions are blocked, read Public\\staff.txt over SMB." \
+answer "enum4linux -U vault-dc|Or: smbclient //vault-dc/Public -N then get staff.txt|answer svc_backup"
 
 add_level 3 "Windows intern" \
 "What is the other non-admin lab username on Windows (hint: temporary staff)?  answer <username>" \
-"Same user enumeration as the previous level." \
-answer "Look for intern in the user list.|enum4linux -U vault-dc|answer intern"
+"Same sources as the previous level (enum4linux or Public/staff.txt)." \
+answer "Look for intern in the user list or staff.txt.|smbclient //vault-dc/Public -N|answer intern"
 
 add_level 3 "Linux web user" \
 "Which Samba/Unix username on the Linux target looks like a web admin?  answer <username>" \

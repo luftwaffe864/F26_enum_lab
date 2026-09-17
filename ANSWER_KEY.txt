@@ -123,14 +123,14 @@ M3 — USERS
 
 20) Windows service account
     Answer: svc_backup
-    Why: Planted local account for “backup service” style naming.
+    Why: Planted local account; also listed in Public\staff.txt if null sessions fail.
     Try:  enum4linux -U vault-dc
-          nmap --script smb-enum-users -p 445 vault-dc
+          OR: smbclient //vault-dc/Public -N   then  get staff.txt
 
 21) Windows intern
     Answer: intern
-    Why: Second non-admin lab user on Windows.
-    Try:  same user-enum commands as above
+    Why: Second non-admin lab user; also in Public\staff.txt.
+    Try:  same as above
 
 22) Linux web user
     Answer: webadmin
