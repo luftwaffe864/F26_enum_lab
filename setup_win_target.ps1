@@ -58,6 +58,21 @@ function Ensure-LocalUser($Name, $Password, $Description) {
 Ensure-LocalUser "svc_backup" 'X9#mK2$pL7!qR4@wN8z' "Backup service account"
 Ensure-LocalUser "intern" 'Y8@nJ3#vQ6!tH5$uM2x' "Temporary intern"
 
+# --- Allow null-session / anonymous SAM enum (needed for enum4linux -U) ---
+# Modern Windows defaults block this; the lab intentionally softens it.
+Log "allowing anonymous SAM / null session enumeration (lab only)"
+$lsa = "HKLM:\SYSTEM\CurrentControlSet\Control\Lsa"
+New-ItemProperty -Path $lsa -Name "RestrictAnonymousSAM" -PropertyType DWord -Value 0 -Force | Out-Null
+New-ItemProperty -Path $lsa -Name "RestrictAnonymous" -PropertyType DWord -Value 0 -Force | Out-Null
+New-ItemProperty -Path $lsa -Name "EveryoneIncludesAnonymous" -PropertyType DWord -Value 1 -Force | Out-Null
+$lanman = "HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters"
+New-ItemProperty -Path $lanman -Name "NullSessionShares" -PropertyType MultiString -Value @("Public") -Force | Out-Null
+New-ItemProperty -Path $lanman -Name "RestrictNullSessAccess" -PropertyType DWord -Value 0 -Force | Out-Null
+# Apply without full reboot when possible
+try { Restart-Service LanmanServer -Force -ErrorAction Stop } catch {
+  Log "WARN: restart LanmanServer later if user enum still fails"
+}
+
 # --- SMB shares ---
 Log "planting SMB shares Public, Finance, IT$"
 $public = "C:\Shares\Public"
