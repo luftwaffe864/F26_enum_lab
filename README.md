@@ -1,4 +1,4 @@
-# ENUM QUEST — DCIG Enumeration Lab
+# ENUM QUEST — OCIG Enumeration Lab
 
 Interactive CLI recon lab (same style as LINUX QUEST). Each student uses their **Kali jumpbox** login (`ocig1`, `ocig2`, … — password matches username) to enumerate two targets: **Ubuntu** and **Windows Server 2019**.
 
