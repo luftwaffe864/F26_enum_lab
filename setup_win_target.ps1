@@ -43,8 +43,8 @@ foreach ($f in $features) {
 }
 
 # --- Local users ---
-# Passwords must satisfy domain complexity (length + mixed chars) and must NOT
-# contain the username (e.g. "Intern!..." fails for user intern).
+# Domain password policy rejects passwords that contain the username (or a
+# 3+ char piece of it). Keep these unrelated to svc_backup / intern.
 Log "planting local users svc_backup, intern"
 function Ensure-LocalUser($Name, $Password, $Description) {
   $secure = ConvertTo-SecureString $Password -AsPlainText -Force
@@ -54,8 +54,9 @@ function Ensure-LocalUser($Name, $Password, $Description) {
     New-LocalUser -Name $Name -Password $secure -FullName $Name -Description $Description -PasswordNeverExpires | Out-Null
   }
 }
-Ensure-LocalUser "svc_backup" "V@ult-Enum-2026-Svc!" "Backup service account"
-Ensure-LocalUser "intern" "V@ult-Enum-2026-Tmp!" "Temporary intern"
+# 20+ chars, upper/lower/digit/symbol, no overlap with account names
+Ensure-LocalUser "svc_backup" 'X9#mK2$pL7!qR4@wN8z' "Backup service account"
+Ensure-LocalUser "intern" 'Y8@nJ3#vQ6!tH5$uM2x' "Temporary intern"
 
 # --- SMB shares ---
 Log "planting SMB shares Public, Finance, IT$"
