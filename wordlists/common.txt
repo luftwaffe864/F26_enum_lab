@@ -1,0 +1,16 @@
+admin
+login
+backup
+secret
+assets
+images
+api
+test
+dev
+old
+panel
+dashboard
+private
+internal
+staging
+EOF
