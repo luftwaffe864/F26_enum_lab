@@ -1,0 +1,14 @@
+# Example Salt pillar for one student pod on the OCIG range.
+# Each team network is 192.168.1.0/24 (isolated). Apply from the admin Kali (Salt master).
+
+enum_quest:
+  files_root: /srv/enum_lab
+  lab_domain: vault.lab
+  ubuntu_host: vault-web
+  win_host: vault-dc
+  ubuntu_ip: 192.168.1.11
+  win_ip: 192.168.1.12
+  jumpbox_cidr: 192.168.1.0/24
+  # Optional: pin which ocigN account owns briefing/home files on the jumpbox.
+  # If omitted, setup_jumpbox.sh uses SUDO_USER or the first ocigN account found.
+  # player_user: ocig1
